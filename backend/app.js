@@ -32,6 +32,19 @@ app.get('/api/health', (req, res) => {
 	res.json({ ok: true });
 });
 
+// JSON 404 for any unmatched /api route (falls through to the HTML catch-all below
+// for non-API paths so the root/landing routes keep working)
+app.use('/api', (req, res) => {
+	res.status(404).json({ error: 'Not found' });
+});
+
+// Global error handler — keeps error responses JSON for API clients
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+	console.error('Unhandled error:', err);
+	res.status(err.status || 500).json({ error: 'Internal server error' });
+});
+
 app.get('/', (req, res) => {
 	res.send('Hello World!');
 });

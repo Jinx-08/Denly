@@ -9,15 +9,4 @@ if(!supabaseUrl || !supabaseAnonKey) {
 
 const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey);
 
-function createUserScopedClient(accessToken) {
-    return createClient(supabaseUrl, supabaseAnonKey, {
-        global: {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-            },
-        },
-    });
-}
-supabaseAuth.createUserScopedClient = createUserScopedClient;
-
 module.exports = supabaseAuth;

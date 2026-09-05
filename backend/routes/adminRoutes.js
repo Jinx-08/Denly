@@ -1,27 +1,34 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminControllers');
-const { body } = require('express-validator');
-const authMiddleware = require('../middleware/authMiddleware');
-const { requireRole } = authMiddleware;
+const { body, validationResult } = require('express-validator');
+const { requireRole } = require('../middleware/authMiddleware');
 
-router.get('/statistics', authMiddleware, requireRole('admin'), adminController.getStatistics);
+const validate = (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+    next();
+};
 
-router.get('/pets', authMiddleware, requireRole('admin'), adminController.getpets);
+router.get('/stats', requireRole('admin'), adminController.getStatistics);
 
-router.get('/applications', authMiddleware, requireRole('admin'), adminController.getApplications);
+router.get('/pets', requireRole('admin'), adminController.getPets);
 
-router.get('/partners', authMiddleware, requireRole('admin'), adminController.getPartners);
+router.get('/applications', requireRole('admin'), adminController.getApplications);
 
-router.delete('/pets/:id', authMiddleware, requireRole('admin'), adminController.deletePets);
+router.get('/partners', requireRole('admin'), adminController.getPartners);
 
-router.delete('/applications/:id', authMiddleware, requireRole('admin'), adminController.deleteApplications);
+router.delete('/pets/:id', requireRole('admin'), adminController.deletePets);
 
-router.patch('/partners/:id', authMiddleware, requireRole('admin'), [
+router.delete('/applications/:id', requireRole('admin'), adminController.deleteApplications);
+
+router.patch('/partners/:id', requireRole('admin'), [
     body('name').optional().notEmpty().withMessage('Name cannot be empty'),
     body('type').optional().isIn(['shelter', 'vet', 'ngo']).withMessage('Type must be shelter, vet or ngo'),
     body('email').optional().isEmail().withMessage('Valid email is required'),
     body('phone').optional().notEmpty().withMessage('Phone cannot be empty'),
-], adminController.patchPartners);
+], validate, adminController.patchPartners);
 
 module.exports = router;

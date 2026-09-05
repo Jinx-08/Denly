@@ -4,13 +4,23 @@ const validationResult = require('express-validator').validationResult;
 const isUuid = (value) =>
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
+// lowercase, dash-joined — "How to Prepare Your Home" → "how-to-prepare-your-home"
+const slugify = (text) => String(text)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/[\s_]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
 exports.getResources = async (req, res) => {
-    const { type, city } = req.query;
+    const { category } = req.query;
     try {
         let query = supabase.from('resources')
-        .select('*');
-        if (type) query = query.eq('type', type);
-        if (city) query = query.ilike('city', `%${city}%`);
+        .select('id, title, slug, category, cover_url, created_at')
+        .order('created_at', { ascending: false });
+        // listing omits `body` — the heavy markdown — per the spec
+        if (category) query = query.eq('category', category);
 
         const { data, error } = await query;
         if (error) {
@@ -51,10 +61,12 @@ exports.postResource = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
 
-    const { title, category, slug } = req.body;
+    const { title, category, slug, body, cover_url } = req.body;
     try {
+        // slug is auto-generated from the title when the client doesn't send one
+        const finalSlug = slug || slugify(title);
         const { data, error } = await supabase.from('resources')
-        .insert([{ title, category, slug }])
+        .insert([{ title, category, slug: finalSlug, body: body || null, cover_url: cover_url || null }])
         .select()
         .single();
         if (error && error.code === '23505') {
@@ -82,13 +94,15 @@ exports.updateResource = async (req, res) => {
         return res.status(400).json({ error: 'Invalid resource ID' });
     }
 
-    const { title, category, slug } = req.body;
+    const { title, category, slug, body, cover_url } = req.body;
     try {
         // Build the update from only the fields actually provided
         const updates = {};
-        for (const [key, value] of Object.entries({ title, category, slug })) {
+        for (const [key, value] of Object.entries({ title, category, slug, body, cover_url })) {
             if (value !== undefined && value !== null) updates[key] = value;
         }
+        // Title change without an explicit slug → regenerate the slug from the new title
+        if (title && slug === undefined) updates.slug = slugify(title);
         if (Object.keys(updates).length === 0) {
             return res.status(400).json({ error: 'No fields to update' });
         }

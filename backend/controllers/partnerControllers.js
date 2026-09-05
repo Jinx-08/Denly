@@ -7,7 +7,12 @@ const isUuid = (value) =>
 exports.getPartners = async (req, res) => {
     const { type, city } = req.query;
     try {
-        let query = supabase.from('partners').select('*');
+        // pets (id) embed filtered to available = the org's available-pet counter;
+        // left-join semantics keep orgs with zero available pets (pets: [])
+        let query = supabase.from('partners')
+            .select('id, name, type, address, city, phone, email, about, logo_url, pets (id)')
+            .order('created_at', { ascending: false })
+            .eq('pets.status', 'available');
         if (type) query = query.eq('type', type);
         if (city) query = query.ilike('city', `%${city}%`);
 
@@ -16,7 +21,14 @@ exports.getPartners = async (req, res) => {
             console.error('Error fetching partners:', error);
             return res.status(500).json({ error: 'Error fetching partners' });
         }
-        return res.status(200).json({ partners: data });
+        // partners with zero available pets — the embed returns [] but count
+        // comes back globally, so compute per-partner from the embed length
+        const partners = data.map((p) => {
+            const available = (p.pets || []).length;
+            const { pets, ...rest } = p;
+            return { ...rest, pets_available: available };
+        });
+        return res.status(200).json({ partners });
     } catch (error) {
         console.error('Error fetching partners:', error);
         res.status(500).json({ error: 'Error fetching partners' });
@@ -30,8 +42,9 @@ exports.getPartnerById = async (req, res) => {
     }
     try {
         const { data, error } = await supabase.from('partners')
-            .select('*')
+            .select('*, pets (id)')
             .eq('id', id)
+            .eq('pets.status', 'available')
             .single();
         if (error && error.code === 'PGRST116') {
             return res.status(404).json({ error: 'Partner not found' });
@@ -40,7 +53,8 @@ exports.getPartnerById = async (req, res) => {
             console.error('Error fetching partner by ID:', error);
             return res.status(500).json({ error: 'Error fetching partner by ID' });
         }
-        return res.status(200).json({ partner: data });
+        const { pets, ...partner } = data;
+        return res.status(200).json({ partner: { ...partner, pets_available: (pets || []).length } });
     } catch (error) {
         console.error('Error fetching partner by ID:', error);
         res.status(500).json({ error: 'Error fetching partner by ID' });
@@ -55,6 +69,19 @@ exports.postPartner = async (req, res) => {
 
     const { name, type, address, city, phone, email, about, logo_url } = req.body;
     try {
+        // One org per owner — the spec's mandatory guard
+        const { data: existing, error: existingError } = await supabase.from('partners')
+            .select('id')
+            .eq('owner_id', req.user.userId)
+            .maybeSingle();
+        if (existingError) {
+            console.error('Error checking existing partner:', existingError);
+            return res.status(500).json({ error: 'Error creating partner' });
+        }
+        if (existing) {
+            return res.status(409).json({ error: 'You already have an organization' });
+        }
+
         const { data, error } = await supabase.from('partners')
             .insert([{ owner_id: req.user.userId, name, type, address, city, phone, email, about, logo_url }])
             .select()

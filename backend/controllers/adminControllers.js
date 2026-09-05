@@ -4,39 +4,60 @@ const validationResult = require('express-validator').validationResult;
 const isUuid = (value) =>
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
+// Group counts by one column — fetches rows since head:true returns none
+const groupCount = async (table, column) => {
+    const { data, error } = await supabase.from(table).select(column);
+    if (error) throw error;
+    const grouped = {};
+    for (const row of data) grouped[row[column]] = (grouped[row[column]] || 0) + 1;
+    return grouped;
+};
+
 exports.getStatistics = async (req, res) => {
     try {
-        // head: true returns no rows — the count comes back in the count property
-        const { count: totalPartners, error: partnersError } = await supabase.from('partners')
-            .select('id', { count: 'exact', head: true });
-        if (partnersError) {
-            console.error('Error fetching partners:', partnersError);
-            return res.status(500).json({ error: 'Error fetching partners' });
-        }
+        const [petsByStatus, appsByStatus, apptsByType, partnersByType, totalPartners, totalResources, totalPets] =
+            await Promise.all([
+                groupCount('pets', 'status'),
+                groupCount('adoption_applications', 'status'),
+                groupCount('appointments', 'type'),
+                groupCount('partners', 'type'),
+                supabase.from('partners').select('id', { count: 'exact', head: true }).then((r) => r.count),
+                supabase.from('resources').select('id', { count: 'exact', head: true }).then((r) => r.count),
+                supabase.from('pets').select('id', { count: 'exact', head: true }).then((r) => r.count),
+            ]);
 
-        const { count: totalResources, error: resourcesError } = await supabase.from('resources')
-            .select('id', { count: 'exact', head: true });
-        if (resourcesError) {
-            console.error('Error fetching resources:', resourcesError);
-            return res.status(500).json({ error: 'Error fetching resources' });
-        }
-
-        const statistics = {
-            totalPartners,
-            totalResources,
-        };
-
-        return res.status(200).json({ statistics });
+        return res.status(200).json({
+            statistics: {
+                pets: {
+                    total: totalPets,
+                    byStatus: petsByStatus,
+                },
+                applications: {
+                    total: Object.values(appsByStatus).reduce((a, b) => a + b, 0),
+                    byStatus: appsByStatus,
+                },
+                appointments: {
+                    total: Object.values(apptsByType).reduce((a, b) => a + b, 0),
+                    byType: apptsByType,
+                },
+                partners: {
+                    total: totalPartners,
+                    byType: partnersByType,
+                },
+                resources: { total: totalResources },
+            },
+        });
     } catch (error) {
         console.error('Error fetching statistics:', error);
         res.status(500).json({ error: 'Error fetching statistics' });
     }
 };
 
-exports.getpets = async (req, res) => {
+exports.getPets = async (req, res) => {
     try {
         const { data: pets, error } = await supabase.from('pets')
-        .select('id, name, breed, age_months, status, created_at');
+        .select('id, name, breed, age_months, status, created_at, partner_id (name)')
+        .order('created_at', { ascending: false });
         if (error) {
             console.error('Error fetching pets:', error);
             return res.status(500).json({ error: 'Error fetching pets' });
@@ -51,7 +72,8 @@ exports.getpets = async (req, res) => {
 exports.getApplications = async (req, res) => {
     try {
         const { data: applications, error } = await supabase.from('adoption_applications')
-        .select('id, pet_id, user_id, status, created_at');
+        .select('id, status, created_at, pet_id (name), user_id (full_name, phone)')
+        .order('created_at', { ascending: false });
         if (error) {
             console.error('Error fetching applications:', error);
             return res.status(500).json({ error: 'Error fetching applications' });
@@ -66,7 +88,8 @@ exports.getApplications = async (req, res) => {
 exports.getPartners = async (req, res) => {
     try {
         const { data: partners, error } = await supabase.from('partners')
-        .select('id, name, type, address, city, phone, email, about, logo_url');
+        .select('id, name, type, address, city, phone, email, about, logo_url, owner_id (full_name)')
+        .order('created_at', { ascending: false });
         if (error) {
             console.error('Error fetching partners:', error);
             return res.status(500).json({ error: 'Error fetching partners' });

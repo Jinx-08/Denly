@@ -1,6 +1,16 @@
 -- ============================================================
--- DENLY — Full Database Setup Script
--- Run top-to-bottom in Supabase SQL Editor (safe to re-run)
+-- DENLY — Full Database Setup Script (single source of truth)
+-- Run top-to-bottom in the Supabase SQL Editor. Safe to re-run.
+--
+-- Contains: extensions, enums, tables, indexes, triggers, RLS,
+-- storage bucket, demo accounts, seed data, and the app_stats view.
+-- (app_stats also lives in denly-stats.sql — kept for reference;
+--  the CREATE OR REPLACE here is idempotent, no conflict.)
+--
+-- Re-run repairs the demo state too: soft-deleted/corrupted
+-- auth.users rows are removed and re-seeded, and any FK cascade
+-- side-effects (partners.owner_id, appointments.user_id) are
+-- re-linked afterwards.
 -- ============================================================
 
 -- ---------- 0. Extensions ----------
@@ -37,7 +47,6 @@ exception when duplicate_object then null;
 end $$;
 
 -- ---------- 2. Tables ----------
-
 -- Profiles: one row per auth user
 create table if not exists public.profiles (
   id          uuid primary key references auth.users (id) on delete cascade,
@@ -127,7 +136,6 @@ create index if not exists idx_appts_partner       on public.appointments (partn
 create index if not exists idx_resources_category  on public.resources (category);
 
 -- ---------- 4. Triggers ----------
-
 -- 4a. Auto-create a profile row on signup.
 --     Frontend passes `role` and `full_name` in supabase.auth.signUp({ options: { data: {...} } })
 create or replace function public.handle_new_user()
@@ -194,6 +202,20 @@ create policy "Public read access to pet images"
 -- ---------- 7. Demo accounts ----------
 -- Passwords: admin@denly.app / partner@denly.app / adopter@denly.app
 -- All use the password: denly123  (CHANGE/DELETE BEFORE REAL DEPLOYMENT)
+--
+-- First purge the demo users. This fixes a corrupted state where auth.users
+-- rows are soft-deleted (deleted_at set): they're invisible to
+-- auth.admin.listUsers() and break both login and re-creation with
+-- "Database error checking email".
+--
+-- NOTE the cascade chain before running the delete:
+--   auth.users → profiles (cascade) → adoption_applications (cascade),
+--   partners.owner_id (set null), appointments.user_id (set null).
+-- Everything that the cascade touches is re-created / re-linked by the
+-- upserts below (7 & 8) and the relink statements in section 11.
+delete from auth.users
+ where email in ('admin@denly.app', 'partner@denly.app', 'adopter@denly.app');
+
 insert into auth.users (id, email, encrypted_password, email_confirmed_at,
                         raw_app_meta_data, raw_user_meta_data)
 values
@@ -212,6 +234,7 @@ on conflict (id) do update set
   email_confirmed_at = excluded.email_confirmed_at,
   raw_app_meta_data  = excluded.raw_app_meta_data,
   raw_user_meta_data = excluded.raw_user_meta_data,
+  deleted_at         = null,
   updated_at         = now();
 
 -- auth.identities rows (required for password login)
@@ -234,7 +257,8 @@ on conflict (id) do update set
   last_sign_in_at = excluded.last_sign_in_at,
   updated_at      = excluded.updated_at;
 
--- Profiles (normally created by the trigger; explicit upsert as a safety net)
+-- Profiles (normally created by the trigger; explicit upsert as a safety net —
+-- also re-creates them after the purge delete above cascaded them away)
 insert into public.profiles (id, full_name, phone, role) values
   ('11111111-1111-1111-1111-111111111111', 'Denly Admin',          null,         'admin'),
   ('22222222-2222-2222-2222-222222222222', 'Happy Tails Shelter',  '+91 90000 11111', 'partner'),
@@ -265,6 +289,14 @@ insert into public.partners (id, owner_id, name, type, address, city, phone, ema
    'Stray Care Collective', 'ngo', '5 Riverside Colony', 'Pune', '+91 90000 77777', 'team@straycare.org',
    'Community volunteer group feeding, treating, and rehoming strays across the city.')
 on conflict (id) do nothing;
+
+-- The section-7 purge cascades profiles away, which sets Happy Tails'
+-- owner_id to null (on delete set null). The insert above is a no-op on
+-- re-run (conflict on id), so re-link explicitly.
+update public.partners
+   set owner_id = '22222222-2222-2222-2222-222222222222'
+ where id = 'aaaa0000-0000-0000-0000-000000000001'
+   and owner_id is null;
 
 -- ---------- 9. Seed: pets (13) ----------
 -- Image URLs are picsum placeholders — swap for real photos / your Storage URLs later.
@@ -458,21 +490,71 @@ Responsible care is a promise for life. Take the pledge.',
 on conflict (id) do nothing;
 
 -- ---------- 11. Seed: one demo application + one demo appointment ----------
+-- The application is protected by unique (pet_id, user_id). The appointment
+-- gets an explicit id so re-runs can't duplicate it (the original script's
+-- bare insert would add a second row every re-run).
 insert into public.adoption_applications (pet_id, user_id, message, phone, status) values
   ('bbbb0000-0000-0000-0000-000000000007', '33333333-3333-3333-3333-333333333333',
    'I have a quiet apartment and work from home — Nala would get constant company!',
    '+91 90000 22222', 'pending')
 on conflict do nothing;
 
-insert into public.appointments (partner_id, user_id, full_name, phone, type, preferred_date, notes, status) values
-  ('aaaa0000-0000-0000-0000-000000000002', '33333333-3333-3333-3333-333333333333',
+insert into public.appointments (id, partner_id, user_id, full_name, phone, type, preferred_date, notes, status) values
+  ('dddd0000-0000-0000-0000-000000000001', 'aaaa0000-0000-0000-0000-000000000002', '33333333-3333-3333-3333-333333333333',
    'Riya Sharma', '+91 90000 22222', 'vaccination', current_date + 7,
    'First rabies shot for my kitten', 'pending')
-on conflict do nothing;
+on conflict (id) do nothing;
+
+-- The section-7 purge cascades profiles away, which sets this appointment's
+-- user_id to null (on delete set null). Re-link it.
+update public.appointments
+   set user_id = '33333333-3333-3333-3333-333333333333'
+ where id = 'dddd0000-0000-0000-0000-000000000001'
+   and user_id is null;
+
+-- ---------- 12. Landing-page / admin stats view ----------
+-- Also exists in denly-stats.sql (Person 2 uses it for GET /api/stats);
+-- CREATE OR REPLACE is idempotent so keeping both files is harmless.
+create or replace view public.app_stats as
+select
+  -- Adoption
+  count(*) filter (where status = 'available')            as pets_available,
+  count(*) filter (where status = 'adopted')              as pets_adopted,
+  count(*) filter (where status = 'pending')              as pets_pending,
+
+  -- Welfare pillars on pets
+  count(*) filter (where is_vaccinated)                   as pets_vaccinated,
+  count(*) filter (where is_sterilized)                   as pets_sterilized,
+
+  -- Community
+  (select count(*) from partners)                         as total_partners,
+  (select count(*) from partners where type = 'shelter')  as shelters,
+  (select count(*) from partners where type = 'vet')      as vets,
+  (select count(*) from partners where type = 'ngo')      as ngos,
+
+  -- Applications
+  (select count(*) from adoption_applications)            as total_applications,
+  (select count(*) from adoption_applications
+     where status = 'approved')                           as successful_adoptions,
+
+  -- Appointments (vaccination pillar)
+  (select count(*) from appointments
+     where type = 'vaccination')                          as vaccinations_booked,
+  (select count(*) from appointments
+     where type = 'sterilization')                        as sterilizations_booked,
+
+  -- Care hub
+  (select count(*) from resources)                        as care_articles
+from pets;
 
 -- ============================================================
 -- DONE. Demo logins (all password: denly123):
 --   admin@denly.app    → site admin
 --   partner@denly.app  → owns Happy Tails Shelter (5 pets)
 --   adopter@denly.app  → has 1 pending application + 1 appointment
+--
+-- Quick sanity check after running:
+--   select * from public.app_stats;
+-- Expected: 11 available / 1 pending / 1 adopted, 6 partners,
+--           1 application, 1 vaccination appointment, 8 articles.
 -- ============================================================

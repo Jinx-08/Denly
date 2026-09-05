@@ -12,6 +12,9 @@
 -- (partners.owner_id, adoption_applications.user_id, appointments.user_id,
 -- profiles.id) keeps pointing at a live user. No relinking needed.
 
+-- 0. pgcrypto provides crypt() / gen_salt() — required for the inserts below
+create extension if not exists pgcrypto;
+
 -- 1. hard-delete the phantom rows (any id, any deleted_at state)
 delete from auth.users
  where email in ('admin@denly.app', 'partner@denly.app', 'adopter@denly.app');

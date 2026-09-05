@@ -200,7 +200,7 @@ create policy "Public read access to pet images"
   using (bucket_id = 'pet-images');
 
 -- ---------- 7. Demo accounts ----------
--- Passwords: admin@denly.app / partner@denly.app / adopter@denly.app
+-- Passwords: denlyadmin@denly.app / happytails@denly.app / riya@denly.app
 -- All use the password: denly123  (CHANGE/DELETE BEFORE REAL DEPLOYMENT)
 --
 -- First purge the demo users. This fixes a corrupted state where auth.users
@@ -214,18 +214,18 @@ create policy "Public read access to pet images"
 -- Everything that the cascade touches is re-created / re-linked by the
 -- upserts below (7 & 8) and the relink statements in section 11.
 delete from auth.users
- where email in ('admin@denly.app', 'partner@denly.app', 'adopter@denly.app');
+ where email in ('denlyadmin@denly.app', 'happytails@denly.app', 'riya@denly.app');
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at,
                         raw_app_meta_data, raw_user_meta_data)
 values
-  ('11111111-1111-1111-1111-111111111111', 'admin@denly.app',
+  ('11111111-1111-1111-1111-111111111111', 'denlyadmin@denly.app',
    crypt('denly123', gen_salt('bf')), now(),
    '{"provider":"email","providers":["email"]}', '{"full_name":"Denly Admin","role":"admin"}'),
-  ('22222222-2222-2222-2222-222222222222', 'partner@denly.app',
+  ('22222222-2222-2222-2222-222222222222', 'happytails@denly.app',
    crypt('denly123', gen_salt('bf')), now(),
    '{"provider":"email","providers":["email"]}', '{"full_name":"Happy Tails Shelter","role":"partner"}'),
-  ('33333333-3333-3333-3333-333333333333', 'adopter@denly.app',
+  ('33333333-3333-3333-3333-333333333333', 'riya@denly.app',
    crypt('denly123', gen_salt('bf')), now(),
    '{"provider":"email","providers":["email"]}', '{"full_name":"Riya Sharma","role":"adopter"}')
 on conflict (id) do update set
@@ -242,13 +242,13 @@ insert into auth.identities (id, user_id, provider_id, identity_data, provider,
                              last_sign_in_at, created_at, updated_at)
 values
   ('11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111',
-   'admin@denly.app', '{"sub":"11111111-1111-1111-1111-111111111111","email":"admin@denly.app","email_verified":true}',
+   'denlyadmin@denly.app', '{"sub":"11111111-1111-1111-1111-111111111111","email":"denlyadmin@denly.app","email_verified":true}',
    'email', now(), now(), now()),
   ('22222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222',
-   'partner@denly.app', '{"sub":"22222222-2222-2222-2222-222222222222","email":"partner@denly.app","email_verified":true}',
+   'happytails@denly.app', '{"sub":"22222222-2222-2222-2222-222222222222","email":"happytails@denly.app","email_verified":true}',
    'email', now(), now(), now()),
   ('33333333-3333-3333-3333-333333333333', '33333333-3333-3333-3333-333333333333',
-   'adopter@denly.app', '{"sub":"33333333-3333-3333-3333-333333333333","email":"adopter@denly.app","email_verified":true}',
+   'riya@denly.app', '{"sub":"33333333-3333-3333-3333-333333333333","email":"riya@denly.app","email_verified":true}',
    'email', now(), now(), now())
 on conflict (id) do update set
   user_id         = excluded.user_id,
@@ -549,9 +549,9 @@ from pets;
 
 -- ============================================================
 -- DONE. Demo logins (all password: denly123):
---   admin@denly.app    → site admin
---   partner@denly.app  → owns Happy Tails Shelter (5 pets)
---   adopter@denly.app  → has 1 pending application + 1 appointment
+--   denlyadmin@denly.app    → site admin
+--   happytails@denly.app  → owns Happy Tails Shelter (5 pets)
+--   riya@denly.app  → has 1 pending application + 1 appointment
 --
 -- Quick sanity check after running:
 --   select * from public.app_stats;

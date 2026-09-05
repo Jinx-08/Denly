@@ -18,7 +18,8 @@
 | CORS allowlist, `/api/health` | `backend/app.js` |
 | Full schema + seed data + demo accounts | `denly-schema.sql` (run it in Supabase SQL Editor if not yet) |
 
-**Demo logins** (password `denly123`): `admin@denly.app` (site admin) · `partner@denly.app` (owns Happy Tails Shelter, 5 pets) · `adopter@denly.app` (Riya, has 1 pending app + 1 appointment).
+**Demo logins** (password `denly123`): `denlyadmin@denly.app` (site admin) · `happytails@denly.app` (owns Happy Tails Shelter, 5 pets) · `riya@denly.app` (Riya, has 1 pending app + 1 appointment).
+> These were created via `POST /api/auth/register` (the old `admin@/partner@/adopter@denly.app` emails are permanently blocked in this project's auth by soft-deleted phantom rows — use the new ones).
 
 ## 1. Shared conventions (follow exactly)
 

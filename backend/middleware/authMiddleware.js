@@ -1,6 +1,6 @@
 const supabase = require('../supabase/client');
 
-module.exports = async (req, res, next) => {
+const requireAuth = async (req, res, next) => {
 	const authorization = req.get('authorization');
 	const token = authorization && authorization.startsWith('Bearer ')
 		? authorization.slice(7)
@@ -31,9 +31,11 @@ module.exports = async (req, res, next) => {
 	return next();
 };
 
-exports.requireRole = (role) => (req, res, next) => {
-	if (req.user?.role !== role) {
+requireAuth.requireRole = (role) => [requireAuth, (req, res, next) => {
+	if (req.user.role !== role) {
 		return res.status(403).json({ error: 'Forbidden: insufficient role' });
 	}
 	return next();
-};
+}];
+
+module.exports = requireAuth;

@@ -1,0 +1,16 @@
+{
+  "name": "denly",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.2",
+    "express": "^5.2.1",
+    "express-validator": "^7.2.1",
+    "multer": "^2.3.0"
+  }
+}

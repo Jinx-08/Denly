@@ -17,31 +17,31 @@ const FALLBACK_VIDEOS = {
     id: 'I-yEiKkric8',
     duration: '11:24',
     author: 'Smart Dog Training',
-    title: 'Dog Training Basic Tutorial in Hindi: शुरुआती ट्रेनिंग'
+    title: 'Dog Training Basic Tutorial (Hindi Audio Guide)'
   },
   vaccination: {
     id: 'QInn83fYWng',
     duration: '7:48',
     author: 'Veterinary Care Collective, India',
-    title: 'Dog Vaccination Schedule & Cost in Hindi (Rabies & 7-in-1)'
+    title: 'Dog Vaccination Schedule & Cost Guide (Hindi Audio)'
   },
   care: {
     id: 'd_yua6iKGkI',
     duration: '9:35',
     author: 'At Mix Pet Care',
-    title: 'Puppy Care Step-by-Step Guide in Hindi'
+    title: 'Puppy Care Step-by-Step Guide (Hindi Audio)'
   },
   sterilization: {
     id: 'i-zM9DohUV8',
     duration: '13:40',
     author: 'Smart Dog Training & Shelter Welfare',
-    title: 'घर पर कुत्ते को सही ट्रेनिंग कैसे दें (Hindi)'
+    title: 'Home Dog Training & Behavior Guide (Hindi Audio)'
   },
   default: {
     id: 'APbVoNqM68E',
     duration: '8:50',
-    author: 'Wild Earth Hindi',
-    title: 'पालतू बिल्ली की देखभाल कैसे करें | Cat Care in Hindi'
+    author: 'Wild Earth & Whiskers Network',
+    title: 'Complete Cat Care & Nutrition Guide (Hindi Audio)'
   }
 };
 

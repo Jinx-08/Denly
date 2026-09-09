@@ -64,11 +64,11 @@ export const CareGuidesPage = () => {
 
   const categories = [
     { id: 'all', label: 'All Guides & Videos' },
-    { id: 'videos', label: '🎥 All Hindi Videos (सभी वीडियो)' },
-    { id: 'adoption', label: 'Dog Training (डॉग ट्रेनिंग)' },
-    { id: 'vaccination', label: 'Vaccines & Cost (टीकाकरण)' },
-    { id: 'care', label: 'Puppy & Cat Care (देखभाल)' },
-    { id: 'sterilization', label: 'Home Behavior (व्यवहार)' },
+    { id: 'videos', label: '🎥 Hindi Video Guides' },
+    { id: 'adoption', label: 'Dog Training' },
+    { id: 'vaccination', label: 'Vaccines & Costs' },
+    { id: 'care', label: 'Puppy & Cat Care' },
+    { id: 'sterilization', label: 'Home Behavior' },
   ];
 
   // Filter guides
@@ -123,7 +123,7 @@ export const CareGuidesPage = () => {
               <div>
                 <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-sun-primary text-brand-dark text-xs font-black uppercase tracking-wider shadow-sm mb-3">
                   <Video className="w-3.5 h-3.5 text-red-600" />
-                  <span>Hindi Video Masterclasses · हिंदी वीडियो गाइड्स</span>
+                  <span>Hindi Video Masterclasses · Expert Care</span>
                 </div>
                 
                 <h1 className="text-3xl sm:text-5xl font-black text-brand-dark font-display tracking-tight leading-tight">
@@ -131,7 +131,7 @@ export const CareGuidesPage = () => {
                 </h1>
                 
                 <p className="mt-3 text-sm sm:text-base text-brand-subtle max-w-2xl font-medium leading-relaxed">
-                  भारतीय पालतू माता-पिता और रेस्क्यू पेट्स के लिए प्रमाणित हिंदी वीडियो गाइड्स। डॉग बेसिक ट्रेनिंग, पपी वैक्सीनेशन शेड्यूल, और बिल्ली की देखभाल के आसान तरीके।
+                  Verified video masterclasses with Hindi audio commentary and comprehensive English care guides. Learn puppy training, vaccination timelines, nutrition, and apartment pet care.
                 </p>
               </div>
 
